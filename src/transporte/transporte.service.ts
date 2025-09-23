@@ -115,4 +115,34 @@ export class TransporteService {
     if (error) throw new Error(error.message);
     return data;
   }
+
+  // Registrar ubicación actual
+  async registrarUbicacion(
+    transporte_id: number,
+    latitud: number,
+    longitud: number,
+  ) {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('transporte_ubicaciones')
+      .insert([{ transporte_id, latitud, longitud }])
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
+  // Obtener todas las ubicaciones de un transporte
+  async obtenerUbicaciones(transporte_id: number) {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('transporte_ubicaciones')
+      .select('*')
+      .eq('transporte_id', transporte_id)
+      .order('registrada_en', { ascending: true });
+
+    if (error) throw new Error(error.message);
+    return data;
+  }
 }

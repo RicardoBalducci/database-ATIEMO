@@ -45,4 +45,22 @@ export class TransporteController {
   obtenerTransporte(@Param('id') id: string) {
     return this.transporteService.obtenerTransportePorId(Number(id));
   }
+
+  @Post(':id/ubicacion')
+  async enviarUbicacion(
+    @Param('id') id: string,
+    @Body() body: { latitud: number; longitud: number },
+  ) {
+    return this.transporteService.registrarUbicacion(
+      Number(id),
+      body.latitud,
+      body.longitud,
+    );
+  }
+
+  // Obtener recorrido/ubicaciones del transporte
+  @Get(':id/ubicaciones')
+  async obtenerUbicaciones(@Param('id') id: string) {
+    return this.transporteService.obtenerUbicaciones(Number(id));
+  }
 }
