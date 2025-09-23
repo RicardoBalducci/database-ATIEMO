@@ -1,3 +1,4 @@
+import { TransporteModule } from './transporte/transporte.module';
 import { ParadasModule } from './parada/paradas.module';
 import { RutasModule } from './rutas/rutas.module';
 import { Module } from '@nestjs/common';
@@ -7,6 +8,7 @@ import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
+    TransporteModule,
     ParadasModule,
     RutasModule,
     ConfigModule.forRoot({
