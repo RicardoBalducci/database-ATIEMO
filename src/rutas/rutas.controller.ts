@@ -65,4 +65,9 @@ export class RutasController {
   ) {
     return this.rutasService.setHoraActiva(Number(hora_id), body.activa);
   }
+
+  @Get('disponibles/ahora')
+obtenerRutasDisponiblesAhora() {
+  return this.rutasService.obtenerRutasDisponiblesAntesDeAhora();
+}
 }

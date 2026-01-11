@@ -81,4 +81,31 @@ export class RutasService {
     if (error) throw new Error(error.message);
     return data;
   }
+  // Obtener rutas activas con horas activas antes de la hora actual
+async obtenerRutasDisponiblesAntesDeAhora() {
+  // Hora actual en formato HH:mm:ss
+  const ahora = new Date().toTimeString().slice(0, 8);
+
+  const { data, error } = await this.supabase
+    .getClient()
+    .from('rutas')
+    .select(`
+      id,
+      nombre,
+      activa,
+      ruta_horas (
+        id,
+        hora,
+        activa
+      )
+    `)
+    .eq('activa', true)
+    .eq('ruta_horas.activa', true)
+    .lt('ruta_horas.hora', ahora);
+
+  if (error) throw new Error(error.message);
+
+  return data;
+}
+
 }
