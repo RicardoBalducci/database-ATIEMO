@@ -5,7 +5,7 @@ import { TransporteService } from './transporte.service';
 export class TransporteController {
   constructor(private transporteService: TransporteService) {}
 
-  @Post()
+  @Post()// listo
   crearTransporte(
     @Body() body: { nombre: string; chofer_id: number; activa?: boolean },
   ) {
@@ -16,7 +16,7 @@ export class TransporteController {
     );
   }
 
-  @Patch(':id')
+  @Patch(':id')// listo
   editarTransporte(
     @Param('id') id: string,
     @Body() body: { nombre?: string; chofer_id?: number; activa?: boolean },
@@ -24,7 +24,7 @@ export class TransporteController {
     return this.transporteService.editarTransporte(Number(id), body);
   }
 
-  @Patch(':id/activar')
+  @Patch(':id/activar')// listo
   activarTransporte(
     @Param('id') id: string,
     @Body() body: { activa: boolean },
@@ -32,21 +32,22 @@ export class TransporteController {
     return this.transporteService.setTransporteActivo(Number(id), body.activa);
   }
 
-  @Post(':id/rutas')
+  @Post(':id/rutas') //asignar transporte a ruta // listo
   asignarRutas(@Param('id') id: string, @Body() body: { ruta_ids: number[] }) {
     return this.transporteService.asignarRutas(Number(id), body.ruta_ids);
   }
 
-  @Get()
+  @Get()// listo
   obtenerTransportes() {
     return this.transporteService.obtenerTransportes();
   }
-  @Get(':id')
+
+  @Get(':id') // listo
   obtenerTransporte(@Param('id') id: string) {
     return this.transporteService.obtenerTransportePorId(Number(id));
   }
 
-  @Post(':id/ubicacion')
+  @Post(':id/ubicacion')// listo
   async enviarUbicacion(
     @Param('id') id: string,
     @Body() body: { latitud: number; longitud: number },
@@ -59,8 +60,13 @@ export class TransporteController {
   }
 
   // Obtener recorrido/ubicaciones del transporte
-  @Get(':id/ubicaciones')
+  @Get(':id/ubicaciones') // listo
   async obtenerUbicaciones(@Param('id') id: string) {
-    return this.transporteService.obtenerUbicaciones(Number(id));
+    return this.transporteService.obtenerUltimaUbicacion(Number(id));
+  }
+
+    @Get('chofer/:chofer_id')
+  async obtenerTransportePorChofer(@Param('chofer_id') chofer_id: string) {
+    return this.transporteService.obtenerTransportePorChofer(Number(chofer_id));
   }
 }

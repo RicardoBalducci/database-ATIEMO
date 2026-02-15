@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query } from '@nestjs/common';
 import { RutasService } from './rutas.service';
 
 @Controller('rutas')
@@ -70,4 +70,49 @@ export class RutasController {
 obtenerRutasDisponiblesAhora() {
   return this.rutasService.obtenerRutasDisponiblesAntesDeAhora();
 }
+
+  @Get(':ruta_id/transportes')
+async obtenerTransportesPorRuta(@Param('ruta_id') ruta_id: string) {
+  // Obtener transportes asignados a la ruta
+  const transportes = await this.rutasService.obtenerTransportesPorRuta(Number(ruta_id));
+  
+  // Agregar la última ubicación de cada transporte
+  const transportesConUbicacion = await Promise.all(
+    transportes.map(async (t) => {
+      const ubicacion = await this.rutasService.transporteService.obtenerUltimaUbicacion(t.id);
+      return { ...t, ultimaUbicacion: ubicacion };
+    }),
+  );
+
+  return transportesConUbicacion;
+}
+
+  @Post(':ruta_id/tiempo_llegada')
+  async tiempoLlegada(
+    @Param('ruta_id') ruta_id: string,
+    @Body() body: { latitud_usuario: number; longitud_usuario: number; parada_id: number }
+  ) {
+    return this.rutasService.calcularTiempoLlegada(
+      Number(ruta_id),
+      body.latitud_usuario,
+      body.longitud_usuario,
+      body.parada_id
+    );
+  }
+
+  @Get(':ruta_id/tiempo_llegada')
+  async tiempoLlegadas(
+    @Param('ruta_id') ruta_id: string,
+    @Query('latitud_usuario') latitud_usuario: string,
+    @Query('longitud_usuario') longitud_usuario: string,
+    @Query('parada_id') parada_id: string,
+  ) {
+    return this.rutasService.calcularTiempoLlegada(
+      Number(ruta_id),
+      Number(latitud_usuario),
+      Number(longitud_usuario),
+      Number(parada_id)
+    );
+  }
+
 }

@@ -17,7 +17,6 @@ export class UsersController {
     return await this.usersService.findAllDrivers();
   }
 
-  // Modificar datos de un usuario por ID
   @Patch(':id')
   async updateUser(
     @Param('id') id: string,
@@ -25,4 +24,6 @@ export class UsersController {
   ) {
     return await this.usersService.updateUser(+id, updateData);
   }
+
+  
 }

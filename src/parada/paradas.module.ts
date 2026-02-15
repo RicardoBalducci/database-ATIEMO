@@ -7,5 +7,7 @@ import { SupabaseService } from '../supabase.service';
   imports: [],
   controllers: [ParadasController],
   providers: [ParadasService, SupabaseService],
+  exports: [ParadasService], // ⚠️ Esto es importante para que otros módulos puedan usarlo
+
 })
 export class ParadasModule {}

@@ -5,6 +5,7 @@ import { Module } from '@nestjs/common';
 import { SupabaseService } from 'src/supabase.service';
 
 @Module({
+  exports: [TransporteService], // Exportamos para usar en RutasService
   controllers: [TransporteController],
   providers: [TransporteService, SupabaseService],
 })

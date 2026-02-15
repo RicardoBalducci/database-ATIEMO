@@ -134,15 +134,54 @@ export class TransporteService {
   }
 
   // Obtener todas las ubicaciones de un transporte
-  async obtenerUbicaciones(transporte_id: number) {
+  async obtenerUltimaUbicacion(transporte_id: number) {
     const { data, error } = await this.supabase
       .getClient()
       .from('transporte_ubicaciones')
       .select('*')
       .eq('transporte_id', transporte_id)
-      .order('registrada_en', { ascending: true });
+      .order('registrada_en', { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (error) throw new Error(error.message);
+    return data;
+  }
+   async obtenerTransportePorChofer(chofer_id: number) {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('transporte')
+      .select(
+        `
+        id,
+        nombre,
+        chofer_id,
+        activa,
+        transporte_rutas (
+          ruta_id,
+          rutas (
+            id,
+            nombre,
+            activa,
+            ruta_horas (*),
+            paradas (*)
+          )
+        )
+      `,
+      )
+      .eq('chofer_id', chofer_id)
+      .maybeSingle(); // 👈 por si no tiene transporte asignado
+
+    if (error) throw new Error(error.message);
+
+    if (!data) {
+      return {
+        message: 'Este chofer no tiene transporte asignado',
+        transporte: null,
+        rutas: [],
+      };
+    }
+
     return data;
   }
 }

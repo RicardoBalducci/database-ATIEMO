@@ -39,7 +39,6 @@ export class ParadasController {
     return this.paradasService.obtenerParadasPorRuta(Number(id_ruta));
   }
 
-  // Obtener todas las paradas
   @Get()
   obtenerTodasParadas() {
     return this.paradasService.obtenerTodasParadas();
