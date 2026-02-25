@@ -1,4 +1,4 @@
-import { Controller, Post, Patch, Get, Body, Param } from '@nestjs/common';
+import { Controller, Post, Patch, Get, Body, Param, Delete } from '@nestjs/common';
 import { TransporteService } from './transporte.service';
 
 @Controller('transporte')
@@ -88,5 +88,24 @@ export class TransporteController {
     );
   }
 
-  
+    // Eliminar transporte
+  @Delete(':id')
+  async eliminarTransporte(@Param('id') id: string) {
+    return this.transporteService.eliminarTransporte(Number(id));
+  }
+
+  // Desasignar chofer del transporte
+  @Patch(':id/desasignar-chofer')
+  async desasignarChofer(@Param('id') id: string) {
+    return this.transporteService.desasignarChofer(Number(id));
+  }
+
+  // Desasignar ruta del transporte
+  @Delete(':id/rutas/:ruta_id')
+  async desasignarRuta(
+    @Param('id') id: string,
+    @Param('ruta_id') ruta_id: string,
+  ) {
+    return this.transporteService.desasignarRuta(Number(id), Number(ruta_id));
+  }
 }

@@ -226,4 +226,53 @@ async obtenerChoferesSinTransporte() {
   if (error) throw new Error(error.message);
   return data;
 }
+  // Eliminar transporte
+async eliminarTransporte(transporte_id: number) {
+  // Eliminar relaciones primero
+  await this.supabase
+    .getClient()
+    .from('transporte_rutas')
+    .delete()
+    .eq('transporte_id', transporte_id);
+
+  const { data, error } = await this.supabase
+    .getClient()
+    .from('transporte')
+    .delete()
+    .eq('id', transporte_id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return { message: 'Transporte eliminado correctamente', data };
+}
+
+// Desasignar chofer (poner chofer_id en null)
+async desasignarChofer(transporte_id: number) {
+  const { data, error } = await this.supabase
+    .getClient()
+    .from('transporte')
+    .update({ chofer_id: null })
+    .eq('id', transporte_id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
+
+// Desasignar ruta específica del transporte
+async desasignarRuta(transporte_id: number, ruta_id: number) {
+  const { data, error } = await this.supabase
+    .getClient()
+    .from('transporte_rutas')
+    .delete()
+    .eq('transporte_id', transporte_id)
+    .eq('ruta_id', ruta_id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return { message: 'Ruta desasignada correctamente', data };
+}
 }
