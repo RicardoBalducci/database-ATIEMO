@@ -208,5 +208,28 @@ async calcularTiempoLlegada(
   };
 }
 
+  async obtenerRutasSinTransporte() {
+  // Obtener todos los ruta_id que ya tienen transporte asignado
+  const { data: rutasAsignadas, error: errorRutas } = await this.supabase
+    .getClient()
+    .from('transporte_rutas')
+    .select('ruta_id');
 
+  if (errorRutas) throw new Error(errorRutas.message);
+
+  const rutaIdsOcupadas = rutasAsignadas.map((r) => r.ruta_id);
+
+  const query = this.supabase
+    .getClient()
+    .from('rutas')
+    .select('*');
+
+  if (rutaIdsOcupadas.length > 0) {
+    query.not('id', 'in', `(${rutaIdsOcupadas.join(',')})`);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error(error.message);
+  return data;
+}
 }

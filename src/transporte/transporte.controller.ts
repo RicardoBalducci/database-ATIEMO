@@ -77,7 +77,7 @@ export class TransporteController {
 
   @Patch(':id/rutas/:ruta_id')
   async cambiarRuta(
-    @Param('id') id: string,
+    @Param('id') id: string, 
     @Param('ruta_id') ruta_id: string,
     @Body() body: { ruta_id_nueva: number },
   ) {
@@ -87,4 +87,6 @@ export class TransporteController {
       body.ruta_id_nueva,
     );
   }
+
+  
 }

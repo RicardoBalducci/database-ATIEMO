@@ -114,5 +114,8 @@ async obtenerTransportesPorRuta(@Param('ruta_id') ruta_id: string) {
       Number(parada_id)
     );
   }
-
+  @Get('sin-transporte')
+  obtenerRutasSinTransporte() {
+    return this.rutasService.obtenerRutasSinTransporte();
+  }
 }
