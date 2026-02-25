@@ -69,4 +69,22 @@ export class TransporteController {
   async obtenerTransportePorChofer(@Param('chofer_id') chofer_id: string) {
     return this.transporteService.obtenerTransportePorChofer(Number(chofer_id));
   }
+
+  @Get('choferes/sin-transporte')
+  async obtenerChoferesSinTransporte() {
+    return this.transporteService.obtenerChoferesSinTransporte();
+  }
+
+  @Patch(':id/rutas/:ruta_id')
+  async cambiarRuta(
+    @Param('id') id: string,
+    @Param('ruta_id') ruta_id: string,
+    @Body() body: { ruta_id_nueva: number },
+  ) {
+    return this.transporteService.cambiarRuta(
+      Number(id),
+      Number(ruta_id),
+      body.ruta_id_nueva,
+    );
+  }
 }

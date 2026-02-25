@@ -69,5 +69,16 @@ export class UsersService {
     return data;
   }
 
+  async deleteUser(id: number) {
+  const { data, error } = await this.supabase
+    .getClient()
+    .from('users')
+    .delete()
+    .eq('id', id)
+    .select()
+    .single();
 
+  if (error) throw new Error(error.message);
+  return { message: 'Usuario eliminado correctamente', data };
+}
 }

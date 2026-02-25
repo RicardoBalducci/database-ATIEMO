@@ -133,6 +133,34 @@ export class TransporteService {
     return data;
   }
 
+async obtenerChoferesSinTransporte() {
+  // Obtener todos los chofer_id que ya tienen transporte asignado
+  const { data: transportesActivos, error: errorTransportes } = await this.supabase
+    .getClient()
+    .from('transporte')
+    .select('chofer_id')
+    .not('chofer_id', 'is', null);
+
+  if (errorTransportes) throw new Error(errorTransportes.message);
+
+  const choferIdsOcupados = transportesActivos.map((t) => t.chofer_id);
+
+  // Obtener todos los users con tipo 'Chofer' que NO están asignados
+  const query = this.supabase
+    .getClient()
+    .from('users')
+    .select('*')
+    .eq('tipo', 'Chofer');
+
+  if (choferIdsOcupados.length > 0) {
+    query.not('id', 'in', `(${choferIdsOcupados.join(',')})`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw new Error(error.message);
+  return data;
+}
   // Obtener todas las ubicaciones de un transporte
   async obtenerUltimaUbicacion(transporte_id: number) {
     const { data, error } = await this.supabase
@@ -184,4 +212,18 @@ export class TransporteService {
 
     return data;
   }
+
+  async cambiarRuta(transporte_id: number, ruta_id_antigua: number, ruta_id_nueva: number) {
+  const { data, error } = await this.supabase
+    .getClient()
+    .from('transporte_rutas')
+    .update({ ruta_id: ruta_id_nueva })
+    .eq('transporte_id', transporte_id)
+    .eq('ruta_id', ruta_id_antigua)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return data;
+}
 }
