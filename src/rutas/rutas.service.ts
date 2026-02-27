@@ -207,7 +207,41 @@ async calcularTiempoLlegada(
     ]
   };
 }
+  // Eliminar ruta (cascade: paradas, horas, transporte_rutas)
+  async eliminarRuta(ruta_id: number) {
+    // 1. Desasignar de transportes
+    await this.supabase
+      .getClient()
+      .from('transporte_rutas')
+      .delete()
+      .eq('ruta_id', ruta_id);
 
+    // 2. Eliminar paradas
+    await this.supabase
+      .getClient()
+      .from('paradas')
+      .delete()
+      .eq('id_ruta', ruta_id);
+
+    // 3. Eliminar horas
+    await this.supabase
+      .getClient()
+      .from('ruta_horas')
+      .delete()
+      .eq('ruta_id', ruta_id);
+
+    // 4. Eliminar la ruta
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('rutas')
+      .delete()
+      .eq('id', ruta_id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return { message: 'Ruta eliminada correctamente', data };
+  }
   async obtenerRutasSinTransporte() {
   // Obtener todos los ruta_id que ya tienen transporte asignado
   const { data: rutasAsignadas, error: errorRutas } = await this.supabase
@@ -232,4 +266,6 @@ async calcularTiempoLlegada(
   if (error) throw new Error(error.message);
   return data;
 }
+
+
 }

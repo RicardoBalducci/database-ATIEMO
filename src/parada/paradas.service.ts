@@ -38,6 +38,19 @@ export class ParadasService {
     return data;
   }
 
+  // Eliminar parada
+  async eliminarParada(id: number) {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('paradas')
+      .delete()
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) throw new Error(error.message);
+    return { message: 'Parada eliminada correctamente', data };
+  }
+
   // Obtener todas las paradas de una ruta
   async obtenerParadasPorRuta(id_ruta: number) {
     const { data, error } = await this.supabase

@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param, Query } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Query, Delete } from '@nestjs/common';
 import { RutasService } from './rutas.service';
 
 @Controller('rutas')
@@ -118,4 +118,11 @@ async obtenerTransportesPorRuta(@Param('ruta_id') ruta_id: string) {
   obtenerRutasSinTransporte() {
     return this.rutasService.obtenerRutasSinTransporte();
   }
+
+    // Eliminar ruta (cascade: paradas, horas, transporte_rutas)
+  @Delete(':ruta_id')
+  eliminarRuta(@Param('ruta_id') ruta_id: string) {
+    return this.rutasService.eliminarRuta(Number(ruta_id));
+  }
+
 }

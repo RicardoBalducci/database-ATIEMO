@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Patch, Body, Param } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, Param, Delete } from '@nestjs/common';
 import { ParadasService } from './paradas.service';
 
 @Controller('paradas')
@@ -42,5 +42,10 @@ export class ParadasController {
   @Get()
   obtenerTodasParadas() {
     return this.paradasService.obtenerTodasParadas();
+  }
+   // Eliminar parada
+  @Delete(':id')
+  eliminarParada(@Param('id') id: string) {
+    return this.paradasService.eliminarParada(Number(id));
   }
 }
