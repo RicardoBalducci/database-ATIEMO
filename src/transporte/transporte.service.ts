@@ -6,7 +6,7 @@ export class TransporteService {
   constructor(private supabase: SupabaseService) {}
 
   // Crear transporte
-  async crearTransporte(nombre: string, chofer_id: number, activa = true) {
+  async crearTransporte(nombre: string, chofer_id: number | null = null, activa = true) {
     const { data, error } = await this.supabase
       .getClient()
       .from('transporte')
@@ -20,7 +20,7 @@ export class TransporteService {
   // Editar transporte
   async editarTransporte(
     transporte_id: number,
-    updates: { nombre?: string; chofer_id?: number; activa?: boolean },
+    updates: { nombre?: string; chofer_id?: number | null; activa?: boolean },
   ) {
     const { data, error } = await this.supabase
       .getClient()
@@ -40,7 +40,6 @@ export class TransporteService {
 
   // Asignar rutas a transporte
   async asignarRutas(transporte_id: number, ruta_ids: number[]) {
-    // Obtener las rutas ya asignadas
     const { data: existentes, error: errorExistentes } = await this.supabase
       .getClient()
       .from('transporte_rutas')
@@ -53,7 +52,7 @@ export class TransporteService {
       (id) => !existentes.some((e) => e.ruta_id === id),
     );
 
-    if (rutasNuevas.length === 0) return []; // nada que insertar
+    if (rutasNuevas.length === 0) return [];
 
     const { data, error } = await this.supabase
       .getClient()
@@ -92,25 +91,23 @@ export class TransporteService {
     const { data, error } = await this.supabase
       .getClient()
       .from('transporte')
-      .select(
-        `
-      id,
-      nombre,
-      chofer_id,
-      activa,
-      transporte_rutas (
-        ruta_id,
-        rutas (
-          nombre,
-          activa,
-          ruta_horas (*),
-          paradas (*)
+      .select(`
+        id,
+        nombre,
+        chofer_id,
+        activa,
+        transporte_rutas (
+          ruta_id,
+          rutas (
+            nombre,
+            activa,
+            ruta_horas (*),
+            paradas (*)
+          )
         )
-      )
-    `,
-      )
+      `)
       .eq('id', transporte_id)
-      .single(); // <- devuelve un solo objeto
+      .single();
 
     if (error) throw new Error(error.message);
     return data;
@@ -133,35 +130,37 @@ export class TransporteService {
     return data;
   }
 
-async obtenerChoferesSinTransporte() {
-  // Obtener todos los chofer_id que ya tienen transporte asignado
-  const { data: transportesActivos, error: errorTransportes } = await this.supabase
-    .getClient()
-    .from('transporte')
-    .select('chofer_id')
-    .not('chofer_id', 'is', null);
+  // Obtener choferes (users con tipo 'Chofer') sin transporte asignado
+  async obtenerChoferesSinTransporte() {
+    // Obtener todos los chofer_id ya ocupados
+    const { data: transportesActivos, error: errorTransportes } = await this.supabase
+      .getClient()
+      .from('transporte')
+      .select('chofer_id')
+      .not('chofer_id', 'is', null);
 
-  if (errorTransportes) throw new Error(errorTransportes.message);
+    if (errorTransportes) throw new Error(errorTransportes.message);
 
-  const choferIdsOcupados = transportesActivos.map((t) => t.chofer_id);
+    const choferIdsOcupados = transportesActivos.map((t) => t.chofer_id);
 
-  // Obtener todos los users con tipo 'Chofer' que NO están asignados
-  const query = this.supabase
-    .getClient()
-    .from('users')
-    .select('*')
-    .eq('tipo', 'Chofer');
+    // Buscar en tabla users los que son Chofer y no están asignados
+    const query = this.supabase
+      .getClient()
+      .from('users')
+      .select('*')
+      .eq('tipo', 'Chofer');
 
-  if (choferIdsOcupados.length > 0) {
-    query.not('id', 'in', `(${choferIdsOcupados.join(',')})`);
+    if (choferIdsOcupados.length > 0) {
+      query.not('id', 'in', `(${choferIdsOcupados.join(',')})`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw new Error(error.message);
+    return data;
   }
 
-  const { data, error } = await query;
-
-  if (error) throw new Error(error.message);
-  return data;
-}
-  // Obtener todas las ubicaciones de un transporte
+  // Obtener última ubicación de un transporte
   async obtenerUltimaUbicacion(transporte_id: number) {
     const { data, error } = await this.supabase
       .getClient()
@@ -175,12 +174,12 @@ async obtenerChoferesSinTransporte() {
     if (error) throw new Error(error.message);
     return data;
   }
-   async obtenerTransportePorChofer(chofer_id: number) {
+
+  async obtenerTransportePorChofer(chofer_id: number) {
     const { data, error } = await this.supabase
       .getClient()
       .from('transporte')
-      .select(
-        `
+      .select(`
         id,
         nombre,
         chofer_id,
@@ -195,10 +194,9 @@ async obtenerChoferesSinTransporte() {
             paradas (*)
           )
         )
-      `,
-      )
+      `)
       .eq('chofer_id', chofer_id)
-      .maybeSingle(); // 👈 por si no tiene transporte asignado
+      .maybeSingle();
 
     if (error) throw new Error(error.message);
 
@@ -214,65 +212,66 @@ async obtenerChoferesSinTransporte() {
   }
 
   async cambiarRuta(transporte_id: number, ruta_id_antigua: number, ruta_id_nueva: number) {
-  const { data, error } = await this.supabase
-    .getClient()
-    .from('transporte_rutas')
-    .update({ ruta_id: ruta_id_nueva })
-    .eq('transporte_id', transporte_id)
-    .eq('ruta_id', ruta_id_antigua)
-    .select()
-    .single();
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('transporte_rutas')
+      .update({ ruta_id: ruta_id_nueva })
+      .eq('transporte_id', transporte_id)
+      .eq('ruta_id', ruta_id_antigua)
+      .select()
+      .single();
 
-  if (error) throw new Error(error.message);
-  return data;
-}
+    if (error) throw new Error(error.message);
+    return data;
+  }
+
   // Eliminar transporte
-async eliminarTransporte(transporte_id: number) {
-  // Eliminar relaciones primero
-  await this.supabase
-    .getClient()
-    .from('transporte_rutas')
-    .delete()
-    .eq('transporte_id', transporte_id);
+  async eliminarTransporte(transporte_id: number) {
+    await this.supabase
+      .getClient()
+      .from('transporte_rutas')
+      .delete()
+      .eq('transporte_id', transporte_id);
 
-  const { data, error } = await this.supabase
-    .getClient()
-    .from('transporte')
-    .delete()
-    .eq('id', transporte_id)
-    .select()
-    .single();
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('transporte')
+      .delete()
+      .eq('id', transporte_id)
+      .select()
+      .single();
 
-  if (error) throw new Error(error.message);
-  return { message: 'Transporte eliminado correctamente', data };
-}
+    if (error) throw new Error(error.message);
+    return { message: 'Transporte eliminado correctamente', data };
+  }
 
-// Desasignar chofer (poner chofer_id en null)
-async desasignarChofer(transporte_id: number) {
-  const { data, error } = await this.supabase
-    .getClient()
-    .from('transporte')
-    .update({ chofer_id: null })
-    .eq('id', transporte_id)
-    .select()
-    .single();
+  // Desasignar chofer — requiere que chofer_id sea nullable en la BD:
+  // ALTER TABLE transporte ALTER COLUMN chofer_id DROP NOT NULL;
+  async desasignarChofer(transporte_id: number) {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('transporte')
+      .update({ chofer_id: null })
+      .eq('id', transporte_id)
+      .select()
+      .single();
 
-  if (error) throw new Error(error.message);
-  return data;
-}
+    if (error) throw new Error(error.message);
+    return data;
+  }
 
-// Desasignar ruta específica del transporte
-async desasignarRuta(transporte_id: number, ruta_id: number) {
-  const { data, error } = await this.supabase
-    .getClient()
-    .from('transporte_rutas')
-    .delete()
-    .eq('transporte_id', transporte_id)
-    .eq('ruta_id', ruta_id)
-    .select()
-    .single();
+  // Desasignar ruta específica del transporte
+  async desasignarRuta(transporte_id: number, ruta_id: number) {
+    const { data, error } = await this.supabase
+      .getClient()
+      .from('transporte_rutas')
+      .delete()
+      .eq('transporte_id', transporte_id)
+      .eq('ruta_id', ruta_id)
+      .select()
+      .single();
 
-  if (error) throw new Error(error.message);
-  return { message: 'Ruta desasignada correctamente', data };
-}
+    if (error) throw new Error(error.message);
+    return { message: 'Ruta desasignada correctamente', data };
+  }
 }
