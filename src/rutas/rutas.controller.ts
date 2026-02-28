@@ -119,6 +119,7 @@ async obtenerTransportesPorRuta(@Param('ruta_id') ruta_id: string) {
     return this.rutasService.obtenerRutasSinTransporte();
   }
 
+  // Eliminar hora
   // Eliminar ruta (cascade: paradas, horas, transporte_rutas)
   @Delete(':ruta_id')
   eliminarRuta(@Param('ruta_id') ruta_id: string) {
