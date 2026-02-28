@@ -126,4 +126,8 @@ async obtenerTransportesPorRuta(@Param('ruta_id') ruta_id: string) {
     return this.rutasService.eliminarRuta(Number(ruta_id));
   }
 
+  @Delete('horas/:hora_id')
+  eliminarHora(@Param('hora_id') hora_id: string) {
+    return this.rutasService.eliminarHora(Number(hora_id));
+  }
 }

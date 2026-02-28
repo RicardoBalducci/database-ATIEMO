@@ -267,5 +267,21 @@ async calcularTiempoLlegada(
   return data;
 }
 
+  // Eliminar hora
+async eliminarHora(hora_id: number) {
+  const { data, error } = await this.supabase
+    .getClient()
+    .from('ruta_horas')
+    .delete()
+    .eq('id', hora_id)
+    .select()
+    .single();
 
+  if (error) throw new Error(error.message);
+
+  return {
+    message: 'Hora eliminada correctamente',
+    data,
+  };
+}
 }
