@@ -284,4 +284,82 @@ async eliminarHora(hora_id: number) {
     data,
   };
 }
+
+async obtenerDetalleRuta(ruta_id: number) {
+    // 1. Ruta base + horas + paradas en una sola query
+    const { data: ruta, error: errorRuta } = await this.supabase
+      .getClient()
+      .from('rutas')
+      .select(`
+        id,
+        nombre,
+        activa,
+        ruta_horas (
+          id,
+          hora,
+          activa
+        ),
+        paradas (
+          id,
+          nombre,
+          latitud,
+          longitud
+        )
+      `)
+      .eq('id', ruta_id)
+      .single();
+
+    if (errorRuta || !ruta) throw new Error('Ruta no encontrada');
+
+    // 2. Transportes asignados a la ruta, incluyendo datos del chofer
+    const { data: transporteRutas, error: errorTransporte } = await this.supabase
+      .getClient()
+      .from('transporte_rutas')
+      .select(`
+        transporte (
+          id,
+          nombre,
+          activa,
+          chofer:usuarios (
+            id,
+            alias,
+            email,
+            telefono,
+            tipo
+          )
+        )
+      `)
+      .eq('ruta_id', ruta_id);
+
+    if (errorTransporte) throw new Error(errorTransporte.message);
+
+    // 3. Para cada transporte, obtener su última ubicación registrada
+    const transportes = await Promise.all(
+      (transporteRutas ?? []).map(async (tr: any) => {
+        const t = tr.transporte;
+        if (!t) return null;
+
+        const ultimaUbicacion =
+          await this.transporteService.obtenerUltimaUbicacion(t.id);
+
+        return {
+          id: t.id,
+          nombre: t.nombre,
+          activa: t.activa,
+          chofer: t.chofer ?? null,
+          ultima_ubicacion: ultimaUbicacion ?? null,
+        };
+      }),
+    );
+
+    // 4. Ensamblar respuesta completa
+    return {
+      id: ruta.id,
+      nombre: ruta.nombre,
+      activa: ruta.activa,
+      horas: ruta.ruta_horas ?? [],
+      paradas: ruta.paradas ?? [],
+      transportes: transportes.filter(Boolean),
+    };
+  }
 }
