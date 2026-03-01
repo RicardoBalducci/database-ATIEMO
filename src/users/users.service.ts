@@ -44,8 +44,29 @@ export class UsersService {
     const { data, error } = await this.supabase
       .getClient()
       .from('users')
-      .select('*')
-      .eq('tipo', 'Chofer'); // Filtra por tipo = "Chofer"
+      .select(`
+        *,
+        transporte (
+          id,
+          nombre,
+          activa,
+          transporte_rutas (
+            ruta_id,
+            rutas (
+              id,
+              nombre,
+              activa,
+              paradas (
+                id,
+                nombre,
+                latitud,
+                longitud
+              )
+            )
+          )
+        )
+      `)
+      .eq('tipo', 'Chofer');
 
     if (error) throw new Error(error.message);
     return data;
