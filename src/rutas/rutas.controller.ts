@@ -5,102 +5,72 @@ import { RutasService } from './rutas.service';
 export class RutasController {
   constructor(private rutasService: RutasService) {}
 
-  // Crear ruta
+  // ─────────────────────────────────────────────────────────────────────────
+  // POST
+  // ─────────────────────────────────────────────────────────────────────────
+
   @Post()
   crearRuta(@Body() body: { nombre: string; activa?: boolean }) {
     return this.rutasService.crearRuta(body.nombre, body.activa);
   }
 
-  // Obtener rutas con horas
-  @Get()
-  obtenerRutas() {
-    return this.rutasService.obtenerRutas();
-  }
-
-  // Editar ruta
-  @Patch(':ruta_id')
-  editarRuta(
-    @Param('ruta_id') ruta_id: string,
-    @Body() body: { nombre?: string; activa?: boolean },
-  ) {
-    return this.rutasService.editarRuta(Number(ruta_id), body);
-  }
-
-  // Activar / desactivar ruta
-  @Patch(':ruta_id/activar')
-  activarRuta(
-    @Param('ruta_id') ruta_id: string,
-    @Body() body: { activa: boolean },
-  ) {
-    return this.rutasService.setRutaActiva(Number(ruta_id), body.activa);
-  }
-
-  // Agregar hora a ruta
   @Post(':ruta_id/horas')
   agregarHora(
     @Param('ruta_id') ruta_id: string,
     @Body() body: { hora: string; activa?: boolean },
   ) {
-    return this.rutasService.agregarHora(
-      Number(ruta_id),
-      body.hora,
-      body.activa,
-    );
+    return this.rutasService.agregarHora(Number(ruta_id), body.hora, body.activa);
   }
-
-  // Editar hora
-  @Patch('horas/:hora_id')
-  editarHora(
-    @Param('hora_id') hora_id: string,
-    @Body() body: { hora?: string; activa?: boolean },
-  ) {
-    return this.rutasService.editarHora(Number(hora_id), body);
-  }
-
-  // Activar / desactivar hora
-  @Patch('horas/:hora_id/activar')
-  activarHora(
-    @Param('hora_id') hora_id: string,
-    @Body() body: { activa: boolean },
-  ) {
-    return this.rutasService.setHoraActiva(Number(hora_id), body.activa);
-  }
-
-  @Get('disponibles/ahora')
-obtenerRutasDisponiblesAhora() {
-  return this.rutasService.obtenerRutasDisponiblesAntesDeAhora();
-}
-
-  @Get(':ruta_id/transportes')
-async obtenerTransportesPorRuta(@Param('ruta_id') ruta_id: string) {
-  // Obtener transportes asignados a la ruta
-  const transportes = await this.rutasService.obtenerTransportesPorRuta(Number(ruta_id));
-  
-  // Agregar la última ubicación de cada transporte
-  const transportesConUbicacion = await Promise.all(
-    transportes.map(async (t) => {
-      const ubicacion = await this.rutasService.transporteService.obtenerUltimaUbicacion(t.id);
-      return { ...t, ultimaUbicacion: ubicacion };
-    }),
-  );
-
-  return transportesConUbicacion;
-}
 
   @Post(':ruta_id/tiempo_llegada')
   async tiempoLlegada(
     @Param('ruta_id') ruta_id: string,
-    @Body() body: { latitud_usuario: number; longitud_usuario: number; parada_id: number }
+    @Body() body: { latitud_usuario: number; longitud_usuario: number; parada_id: number },
   ) {
     return this.rutasService.calcularTiempoLlegada(
       Number(ruta_id),
       body.latitud_usuario,
       body.longitud_usuario,
-      body.parada_id
+      body.parada_id,
     );
   }
 
-  @Get(':ruta_id/tiempo_llegada')
+  // ─────────────────────────────────────────────────────────────────────────
+  // GET  —  ⚠️ estáticas SIEMPRE antes que las dinámicas (:ruta_id)
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @Get()
+  obtenerRutas() {
+    return this.rutasService.obtenerRutas();
+  }
+
+  @Get('disponibles/ahora')          // estática
+  obtenerRutasDisponiblesAhora() {
+    return this.rutasService.obtenerRutasDisponiblesAntesDeAhora();
+  }
+
+  @Get('sin-transporte')             // estática
+  obtenerRutasSinTransporte() {
+    return this.rutasService.obtenerRutasSinTransporte();
+  }
+
+  @Get(':ruta_id')                   // dinámica
+  obtenerDetalleRuta(@Param('ruta_id') ruta_id: string) {
+    return this.rutasService.obtenerDetalleRuta(Number(ruta_id));
+  }
+
+  @Get(':ruta_id/transportes')       // dinámica
+  async obtenerTransportesPorRuta(@Param('ruta_id') ruta_id: string) {
+    const transportes = await this.rutasService.obtenerTransportesPorRuta(Number(ruta_id));
+    return Promise.all(
+      transportes.map(async (t) => {
+        const ubicacion = await this.rutasService.transporteService.obtenerUltimaUbicacion(t.id);
+        return { ...t, ultimaUbicacion: ubicacion };
+      }),
+    );
+  }
+
+  @Get(':ruta_id/tiempo_llegada')    // dinámica
   async tiempoLlegadas(
     @Param('ruta_id') ruta_id: string,
     @Query('latitud_usuario') latitud_usuario: string,
@@ -111,30 +81,57 @@ async obtenerTransportesPorRuta(@Param('ruta_id') ruta_id: string) {
       Number(ruta_id),
       Number(latitud_usuario),
       Number(longitud_usuario),
-      Number(parada_id)
+      Number(parada_id),
     );
   }
-  @Get('sin-transporte')
-  obtenerRutasSinTransporte() {
-    return this.rutasService.obtenerRutasSinTransporte();
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PATCH  —  estáticas antes que dinámicas
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @Patch('horas/:hora_id')           // estática
+  editarHora(
+    @Param('hora_id') hora_id: string,
+    @Body() body: { hora?: string; activa?: boolean },
+  ) {
+    return this.rutasService.editarHora(Number(hora_id), body);
   }
 
-  // Eliminar hora
-  // Eliminar ruta (cascade: paradas, horas, transporte_rutas)
-  @Delete(':ruta_id')
-  eliminarRuta(@Param('ruta_id') ruta_id: string) {
-    return this.rutasService.eliminarRuta(Number(ruta_id));
+  @Patch('horas/:hora_id/activar')   // estática
+  activarHora(
+    @Param('hora_id') hora_id: string,
+    @Body() body: { activa: boolean },
+  ) {
+    return this.rutasService.setHoraActiva(Number(hora_id), body.activa);
   }
 
-  @Delete('horas/:hora_id')
+  @Patch(':ruta_id')                 // dinámica
+  editarRuta(
+    @Param('ruta_id') ruta_id: string,
+    @Body() body: { nombre?: string; activa?: boolean },
+  ) {
+    return this.rutasService.editarRuta(Number(ruta_id), body);
+  }
+
+  @Patch(':ruta_id/activar')         // dinámica
+  activarRuta(
+    @Param('ruta_id') ruta_id: string,
+    @Body() body: { activa: boolean },
+  ) {
+    return this.rutasService.setRutaActiva(Number(ruta_id), body.activa);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // DELETE  —  estáticas antes que dinámicas
+  // ─────────────────────────────────────────────────────────────────────────
+
+  @Delete('horas/:hora_id')          // estática
   eliminarHora(@Param('hora_id') hora_id: string) {
     return this.rutasService.eliminarHora(Number(hora_id));
   }
 
-    @Get(':ruta_id')
-  obtenerDetalleRuta(@Param('ruta_id') ruta_id: string) {
-    return this.rutasService.obtenerDetalleRuta(Number(ruta_id));
+  @Delete(':ruta_id')                // dinámica
+  eliminarRuta(@Param('ruta_id') ruta_id: string) {
+    return this.rutasService.eliminarRuta(Number(ruta_id));
   }
-
-  
 }
