@@ -275,4 +275,32 @@ export class TransporteService {
     if (error) throw new Error(error.message);
     return { message: 'Ruta desasignada correctamente', data };
   }
+
+  // Obtener transportes sin ninguna ruta asignada
+async obtenerTransportesSinRuta() {
+  // 1. Obtener todos los transporte_id que ya tienen al menos una ruta
+  const { data: conRuta, error: errConRuta } = await this.supabase
+    .getClient()
+    .from('transporte_rutas')
+    .select('transporte_id');
+
+  if (errConRuta) throw new Error(errConRuta.message);
+
+  const idsConRuta = conRuta.map((r) => r.transporte_id);
+
+  // 2. Traer transportes cuyo id NO esté en esa lista
+  const query = this.supabase
+    .getClient()
+    .from('transporte')
+    .select('id, nombre, chofer_id, activa');
+
+  if (idsConRuta.length > 0) {
+    query.not('id', 'in', `(${idsConRuta.join(',')})`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) throw new Error(error.message);
+  return data;
+}
 }
