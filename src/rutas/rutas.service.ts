@@ -22,7 +22,7 @@ export class RutasService {
       .single();
 
     if (error) throw new Error(error.message);
-    await this.paradasService.crearParada('UDO', ruta.id, 10.995095, -63.868602);
+/*     await this.paradasService.crearParada('UDO', ruta.id, 10.995095, -63.868602); */
     return ruta;
   }
 
