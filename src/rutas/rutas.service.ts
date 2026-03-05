@@ -130,7 +130,7 @@ export class RutasService {
         nombre,
         activa,
         ruta_horas ( id, hora, activa ),
-        paradas    ( id, nombre, latitud, longitud )
+        paradas    ( id, nombre, latitud, longitud, orden, activa )
       `)
       .eq('id', ruta_id)
       .single();
@@ -215,7 +215,7 @@ export class RutasService {
       ),
 
       // Paradas en el orden en que fueron insertadas
-      paradas: ruta.paradas ?? [],
+      paradas: (ruta.paradas ?? []).sort((a: any, b: any) => (a.orden ?? 0) - (b.orden ?? 0)),
 
       // Transportes con chofer y ubicación
       transportes: transportes.filter(Boolean),
