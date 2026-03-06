@@ -222,59 +222,167 @@ export class RutasService {
     };
   }
 
-  // Calcular tiempo de llegada
-  async calcularTiempoLlegada(
-    ruta_id: number,
-    latUsuario: number,
-    lonUsuario: number,
-    parada_id: number,
-  ) {
-    const { data: parada, error: errParada } = await this.supabase
-      .getClient()
-      .from('paradas')
-      .select('*')
-      .eq('id', parada_id)
-      .single();
-    if (errParada || !parada) throw new Error('Parada no encontrada');
+async calcularTiempoLlegada(
+  ruta_id: number,
+  latUsuario: number,
+  lonUsuario: number,
+  parada_id: number,
+) {
+  // ── 1. Parada destino del usuario ────────────────────────────────────────
+  const { data: paradaDestino, error: errParada } = await this.supabase
+    .getClient()
+    .from('paradas')
+    .select('*')
+    .eq('id', parada_id)
+    .single();
+  if (errParada || !paradaDestino) throw new Error('Parada no encontrada');
 
-    const transportes = await this.obtenerTransportesPorRuta(ruta_id);
-    if (!transportes?.length) throw new Error('No hay transporte asignado a esta ruta');
+  // ── 2. Todas las paradas de la ruta ordenadas por `orden` ────────────────
+  const { data: todasParadas, error: errParadas } = await this.supabase
+    .getClient()
+    .from('paradas')
+    .select('*')
+    .eq('id_ruta', ruta_id)
+    .order('orden', { ascending: true });
+  if (errParadas || !todasParadas?.length) throw new Error('No hay paradas en esta ruta');
 
-    const transporte = transportes[0];
-    const ubicBus = await this.transporteService.obtenerUltimaUbicacion(transporte.id);
-    if (!ubicBus) throw new Error('El transporte no tiene ubicación registrada');
+  // ── 3. Transporte y última ubicación del bus ─────────────────────────────
+  const transportes = await this.obtenerTransportesPorRuta(ruta_id);
+  if (!transportes?.length) throw new Error('No hay transporte asignado a esta ruta');
 
-    const waypointsUsuario = `${lonUsuario},${latUsuario};${parada.longitud},${parada.latitud}`;
-    const respUsuario = await axios.get(
-      `http://router.project-osrm.org/route/v1/driving/${waypointsUsuario}?overview=false`,
-    );
-    const legUsuario = respUsuario.data.routes[0].legs[0];
+  const transporte = transportes[0];
+  const ubicBus = await this.transporteService.obtenerUltimaUbicacion(transporte.id);
+  if (!ubicBus) throw new Error('El transporte no tiene ubicación registrada');
 
-    const waypointsBus = `${ubicBus.longitud},${ubicBus.latitud};${parada.longitud},${parada.latitud}`;
-    const respBus = await axios.get(
-      `http://router.project-osrm.org/route/v1/driving/${waypointsBus}?overview=false`,
-    );
-    const legBus = respBus.data.routes[0].legs[0];
+  const busLat = ubicBus.latitud;
+  const busLon = ubicBus.longitud;
 
-    return {
-      tiempo_usuario_a_parada_min:   Math.ceil(legUsuario.duration / 60),
-      distancia_usuario_a_parada_km: +(legUsuario.distance / 1000).toFixed(2),
-      tiempo_bus_a_parada_min:       Math.ceil(legBus.duration / 60),
-      distancia_bus_a_parada_km:     +(legBus.distance / 1000).toFixed(2),
-      detalle_trayecto: [
-        {
-          desde: 'usuario', hasta: 'parada',
-          distancia_km: +(legUsuario.distance / 1000).toFixed(2),
-          tiempo_min:   Math.ceil(legUsuario.duration / 60),
-        },
-        {
-          desde: 'bus', hasta: 'parada',
-          distancia_km: +(legBus.distance / 1000).toFixed(2),
-          tiempo_min:   Math.ceil(legBus.duration / 60),
-        },
-      ],
-    };
+  // ── 4. Detectar en qué índice está el bus ────────────────────────────────
+  // La primera parada ACTIVA más cercana al bus = próxima parada del bus
+  const paradasActivas = todasParadas.filter((p) => p.activa);
+
+  let indiceBusEnRuta = -1;
+
+  if (paradasActivas.length > 0) {
+    // Encontrar la parada activa más cercana al bus
+    let menorDistancia = Infinity;
+    let paradaMasCercana: any = null;
+
+    for (const p of paradasActivas) {
+      const dist = this.distanciaKm(busLat, busLon, p.latitud, p.longitud);
+      if (dist < menorDistancia) {
+        menorDistancia = dist;
+        paradaMasCercana = p;
+      }
+    }
+
+    // Índice en el array ordenado total
+    indiceBusEnRuta = todasParadas.findIndex((p) => p.id === paradaMasCercana.id);
   }
+
+  // Índice de la parada del usuario en la ruta
+  const indiceParadaUsuario = todasParadas.findIndex((p) => p.id === parada_id);
+  if (indiceParadaUsuario === -1) throw new Error('La parada no pertenece a esta ruta');
+
+  // ── 5. Construir waypoints según si el bus ya pasó o no ──────────────────
+  let waypointsBus: string;
+  let yaPaso = false;
+
+  if (indiceBusEnRuta === -1 || indiceBusEnRuta <= indiceParadaUsuario) {
+    // ✅ Caso normal: bus no ha llegado aún a la parada del usuario
+    // Ruta: bus → paradas intermedias activas → parada destino
+    const paradasIntermediasActivas = todasParadas
+      .slice(indiceBusEnRuta === -1 ? 0 : indiceBusEnRuta, indiceParadaUsuario + 1)
+      .filter((p) => p.activa);
+
+    const puntos = [
+      `${busLon},${busLat}`,
+      ...paradasIntermediasActivas.map((p) => `${p.longitud},${p.latitud}`),
+    ];
+
+    // Si la parada destino no quedó incluida (inactiva), agregarla igual como destino final
+    const ultimoPunto = puntos[puntos.length - 1];
+    const destinoStr = `${paradaDestino.longitud},${paradaDestino.latitud}`;
+    if (ultimoPunto !== destinoStr) puntos.push(destinoStr);
+
+    waypointsBus = puntos.join(';');
+  } else {
+    // ⚠️ Caso ciclo: el bus ya pasó la parada del usuario
+    // Ruta: bus → resto de paradas activas hasta el final → inicio → paradas hasta destino
+    yaPaso = true;
+
+    const restoDeRuta = todasParadas
+      .slice(indiceBusEnRuta)
+      .filter((p) => p.activa);
+
+    const vueltaAlInicio = todasParadas
+      .slice(0, indiceParadaUsuario + 1)
+      .filter((p) => p.activa);
+
+    const puntos = [
+      `${busLon},${busLat}`,
+      ...restoDeRuta.map((p) => `${p.longitud},${p.latitud}`),
+      // Desde la última parada de la ruta vuelve al inicio siguiendo el orden
+      ...vueltaAlInicio.map((p) => `${p.longitud},${p.latitud}`),
+    ];
+
+    // Garantizar que el destino final es la parada del usuario
+    const destinoStr = `${paradaDestino.longitud},${paradaDestino.latitud}`;
+    if (puntos[puntos.length - 1] !== destinoStr) puntos.push(destinoStr);
+
+    waypointsBus = puntos.join(';');
+  }
+
+  // ── 6. Calcular ruta del usuario a la parada (directo) ───────────────────
+  const waypointsUsuario = `${lonUsuario},${latUsuario};${paradaDestino.longitud},${paradaDestino.latitud}`;
+
+  const [respUsuario, respBus] = await Promise.all([
+    axios.get(`http://router.project-osrm.org/route/v1/driving/${waypointsUsuario}?overview=false`),
+    axios.get(`http://router.project-osrm.org/route/v1/driving/${waypointsBus}?overview=false`),
+  ]);
+
+  const legUsuario = respUsuario.data.routes[0].legs[0];
+
+  // Cuando hay múltiples legs (múltiples waypoints), sumar duración y distancia total
+  const legsBus = respBus.data.routes[0].legs as Array<{ duration: number; distance: number }>;
+  const duracionBusTotal  = legsBus.reduce((acc, l) => acc + l.duration, 0);
+  const distanciaBusTotal = legsBus.reduce((acc, l) => acc + l.distance, 0);
+
+  // ── 7. Respuesta ─────────────────────────────────────────────────────────
+  return {
+    tiempo_usuario_a_parada_min:   Math.ceil(legUsuario.duration / 60),
+    distancia_usuario_a_parada_km: +(legUsuario.distance / 1000).toFixed(2),
+    tiempo_bus_a_parada_min:       Math.ceil(duracionBusTotal / 60),
+    distancia_bus_a_parada_km:     +(distanciaBusTotal / 1000).toFixed(2),
+    ya_paso: yaPaso, // 🆕 el cliente puede mostrar "El bus ya pasó, viene en la próxima vuelta"
+    detalle_trayecto: [
+      {
+        desde: 'usuario', hasta: 'parada',
+        distancia_km: +(legUsuario.distance / 1000).toFixed(2),
+        tiempo_min:   Math.ceil(legUsuario.duration / 60),
+      },
+      {
+        desde: 'bus', hasta: 'parada',
+        distancia_km: +(distanciaBusTotal / 1000).toFixed(2),
+        tiempo_min:   Math.ceil(duracionBusTotal / 60),
+        ciclo_completo: yaPaso, // 🆕 indica si tuvo que dar vuelta completa
+      },
+    ],
+  };
+}
+
+// ── Helper: distancia haversine en km ────────────────────────────────────────
+private distanciaKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
   // Eliminar ruta (cascade)
   async eliminarRuta(ruta_id: number) {

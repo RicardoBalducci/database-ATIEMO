@@ -303,4 +303,21 @@ async obtenerTransportesSinRuta() {
   if (error) throw new Error(error.message);
   return data;
 }
+
+// Guardar/actualizar última ubicación (upsert por transporte_id)
+async guardarUltimaUbicacion(
+  transporte_id: number,
+  latitud: number,
+  longitud: number,
+) {
+  const { data, error } = await this.supabase
+    .getClient()
+    .from('transporte_ubicaciones')
+    .insert([{ transporte_id, latitud, longitud }])
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  return { message: 'Última ubicación guardada', data };
+}
 }

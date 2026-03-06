@@ -87,6 +87,18 @@ export class TransporteController {
     return this.transporteService.setTransporteActivo(Number(id), body.activa);
   }
 
+  @Patch(':id/ubicacion')
+  async guardarUltimaUbicacion(
+    @Param('id') id: string,
+    @Body() body: { latitud: number; longitud: number },
+  ) {
+    return this.transporteService.guardarUltimaUbicacion(
+      Number(id),
+      body.latitud,
+      body.longitud,
+    );
+  }
+
   @Patch(':id/rutas/:ruta_id')
   async cambiarRuta(
     @Param('id') id: string,
